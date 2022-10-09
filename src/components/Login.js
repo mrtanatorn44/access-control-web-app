@@ -14,7 +14,8 @@ function Login() {
   const navigate = useNavigate();
   const captchaRef = useRef(null)
   const CryptoJS = require("crypto-js");
-  const [showPassword, setShowPassword ] = useState(false)
+
+  const [ showPassword, setShowPassword ] = useState(false)
   const [ loginForm, setLoginForm ] = useState({ username : '', password : '' })
   const [ captcha, setCaptcha ] = useState(true)
   const [ cookies, setCookies, removeCookies ] = useCookies(['WEB']);
@@ -60,14 +61,23 @@ function Login() {
     userModel.Login(data, loginSuccess, loginFailed, emailNotVerify, expiredPassword);
   }
 
-  const loginSuccess = (user) => {
-    var userData = { username : user.username, email : user.email }
-    var encrypt_userData = CryptoJS.AES.encrypt( JSON.stringify(userData), process.env.REACT_APP_PASSPHRASE).toString()
-    setCookies('WEB', encrypt_userData, { maxAge: 1800 }); // 30 minutes expire
-    Swal.fire({ title: 'Login success!', text: 'Success', icon: 'success', confirmButtonText: 'Go to profile' })
-      .then(() => {
-        navigate('/profile')
+  const loginSuccess = async (user) => {
+    try {
+      await fetch('https://ipgeolocation.abstractapi.com/v1/?api_key=' + process.env.REACT_APP_ABSTRACTAPI_APIKEY)
+        .then((response) => response.json())
+        .then((data) => {
+          // console.log(data)
+          var publicIp = data.ip_address
+          var userData = { username : user.username, email : user.email, ip : publicIp }
+          // console.log(userData)
+          var encrypt_userData = CryptoJS.AES.encrypt( JSON.stringify(userData), process.env.REACT_APP_PASSPHRASE).toString()
+          setCookies('WEB', encrypt_userData, { maxAge: 1800 }); // 30 minutes expire
+          Swal.fire({ title: 'Login success!', text: 'Success', icon: 'success', confirmButtonText: 'Go to profile' })
+            .then(() => { navigate('/profile') });
       });
+    } catch (error) {
+      console.error(error)
+    }
   }
   const loginFailed = (msg) => {
     Swal.fire({ title: 'Login failed!', text: 'Username or Password incorrect!', icon: 'error', confirmButtonText: 'Close' })
@@ -185,11 +195,11 @@ function Login() {
         <h1 className="text-3xl font-semibold text-center text-purple-700 underline">
           Sign in
         </h1>
-        <button onClick={() => test()}
+        {/* <button onClick={() => test()}
           className="bg-red-500"
         >
           test login with exist account
-        </button >
+        </button > */}
 
         <form className="mt-6" noValidate onSubmit={(e) => onLoginSubmit(e)}>
           <div className="mb-2">
@@ -236,7 +246,7 @@ function Login() {
           </p>
           <div className="mt-4">
             <ReCAPTCHA
-              className="my-3"
+              className="my-3 w-full"
               sitekey={process.env.REACT_APP_RECAPTCHA_KEY}
               badge= 'inline'
               ref={captchaRef}
