@@ -1,35 +1,66 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from 'react'
 import { Link } from "react-router-dom";
 import Swal from 'sweetalert2'
-function Recovery() {
- const [email_Recovery,setemail_Recovery] = useState("")
- 
-//  const doRequestPasswordReset = async function () {
-//   // Note that this value come from state variables linked to your text input
-//   const emailValue = email;
-//   try {
-//     await Parse.User.requestPasswordReset(emailValue);
-//     alert(`Success! Please check ${email} to proceed with password reset.`);
-//     return true;
-//   } catch(error) {
-//     // Error can be caused by lack of Internet connection
-//     alert(`Error! ${error}`);
-//     return false;
-//   }
-// };
+import * as userModel from "../firebase/userModel"
 
- function ResetPassword(event) {
+import ReCAPTCHA from 'react-google-recaptcha'
+import emailjs from '@emailjs/browser';
+
+function Recovery() {
+  const captchaRef = useRef(null)
+  const [ captcha, setCaptcha ] = useState(true)
+  const [ emailRecovery, setEmailRecovery ] = useState("")
+
+  const onSubmitRecovery = (event) => {
     event.preventDefault();
-    console.log(email_Recovery);
-    Swal.fire('Email Sent Successfully')
+    captchaRef.current.reset();
+
+    userModel.sendResetPw(emailRecovery, sendResetPwSuccess, sendResetPwUnsuccess)
   }
+  const sendResetPwSuccess = async (user) => {
+    await sendResetVerify(user)
+    Swal.fire({ title: 'Send link success', text:"We have sent reset password link to your email (" + censorEmail(user.email) + ').', icon: 'success', confirmButtonText: 'Back' })
+  }
+  const sendResetPwUnsuccess = (msg) => {
+    Swal.fire({ title: 'Send link failed', text: msg, icon: 'error', confirmButtonText: 'Back' })
+  }
+  
+  // Email function
+  const sendResetVerify = (user) => {
+    var templateParams = {
+      target_email: user.email,
+      username: user.username,
+      verify_link: window.location.origin.toString() + '/reset?key=' + user.reset_hash
+    };
+    emailjs.send(
+      process.env.REACT_APP_EMAILJS_SERVICEID, 
+      process.env.REACT_APP_EMAILJS_TEMPLATEID_RESET, 
+      templateParams, 
+      process.env.REACT_APP_EMAILJS_PUBLICKEY
+    )
+      .then((result) => {
+        console.log(result.text);
+      }, (error) => {
+        console.log(error.text);
+      });
+  };
+
+  // Helper Function
+  const censorWord = (str) => {
+    return str[0] + "*".repeat(str.length - 2) + str.slice(-3);
+  }
+  const censorEmail = (email) => {
+    var arr = email.split("@");
+    return censorWord(arr[0]) + "@" + censorWord(arr[1]);
+  }
+  
   return (
     <div className="relative flex flex-col justify-center min-h-screen overflow-hidden bg-purple-900">
       <div className="w-full p-6 m-auto bg-white rounded-md shadow-md lg:max-w-xl">
         <h1 className="text-3xl font-semibold text-center text-purple-700 underline">
             Forgot Your Password?
         </h1>
-        <form className="mt-6" onSubmit={(e) => ResetPassword(e)}>
+        <form className="mt-6" onSubmit={(e) => onSubmitRecovery(e)}>
           <div className="mb-2">
             <label htmlFor="Email" className="block text-sm font-semibold text-gray-800">
               Email
@@ -37,12 +68,26 @@ function Recovery() {
             <input
               type="Email"
               className="block w-full px-4 py-2 mt-2 text-purple-700 bg-white border rounded-md focus:border-purple-400 focus:ring-purple-300 focus:outline-none focus:ring focus:ring-opacity-40"
-              onChange={e => setemail_Recovery(e.target.value)}
+              onChange={e => setEmailRecovery(e.target.value)}
               required
             />
           </div>
           <div className="mt-6">
-            <button className="w-full px-4 py-2 tracking-wide text-white transition-colors duration-200 transform bg-purple-700 rounded-md hover:bg-purple-600 focus:outline-none focus:bg-purple-600">
+            <ReCAPTCHA
+              className="my-3"
+              sitekey={process.env.REACT_APP_RECAPTCHA_KEY}
+              badge= 'inline'
+              ref={captchaRef}
+              onChange={() => {setCaptcha(false);}}
+            />
+            <button disabled={captcha} type="submit" 
+              className= {
+                captcha ?
+                "bg-zinc-500 w-full px-4 py-2 tracking-wide text-white transition-colors duration-200 transform  rounded-md hover:bg-zinc-500 focus:outline-none focus:bg-purple-600"
+                :
+                "bg-purple-700 w-full px-4 py-2 tracking-wide text-white transition-colors duration-200 transform  rounded-md hover:bg-purple-600 focus:outline-none focus:bg-purple-600"
+              }
+            >              
               Reset Password
             </button >
           </div>

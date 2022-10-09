@@ -5,6 +5,7 @@ import { useCookies } from 'react-cookie';
 import Swal from 'sweetalert2'
 import bcrypt from 'bcryptjs'
 import ReCAPTCHA from 'react-google-recaptcha'
+import emailjs from '@emailjs/browser';
 
 import * as userModel from '../firebase/userModel'
 import * as Validator from '../helpers/Validator'
@@ -13,7 +14,7 @@ function Login() {
   const navigate = useNavigate();
   const captchaRef = useRef(null)
   const CryptoJS = require("crypto-js");
-
+  const [showPassword, setShowPassword ] = useState(false)
   const [ loginForm, setLoginForm ] = useState({ username : '', password : '' })
   const [ captcha, setCaptcha ] = useState(true)
   const [ cookies, setCookies, removeCookies ] = useCookies(['WEB']);
@@ -55,14 +56,14 @@ function Login() {
   }
   
   function test() {
-    var data = { username: 'mrtanatorn01', password: 'mrtanatorN_01' }
-    userModel.Login(data, loginSuccess, loginFailed, emailNotVerify);
+    var data = { username: 'mrtanatorn01', password: 'Test_1234' }
+    userModel.Login(data, loginSuccess, loginFailed, emailNotVerify, expiredPassword);
   }
 
   const loginSuccess = (user) => {
     var userData = { username : user.username, email : user.email }
     var encrypt_userData = CryptoJS.AES.encrypt( JSON.stringify(userData), process.env.REACT_APP_PASSPHRASE).toString()
-    setCookies('WEB', encrypt_userData, 1800);
+    setCookies('WEB', encrypt_userData, { maxAge: 1800 }); // 30 minutes expire
     Swal.fire({ title: 'Login success!', text: 'Success', icon: 'success', confirmButtonText: 'Go to profile' })
       .then(() => {
         navigate('/profile')
@@ -72,15 +73,77 @@ function Login() {
     Swal.fire({ title: 'Login failed!', text: 'Username or Password incorrect!', icon: 'error', confirmButtonText: 'Close' })
     // console.log('login failed :', msg)
   }
-  const emailNotVerify = (email) => {
-    Swal.fire({ title: 'Verification needed!', text: 'Click "verify" button to send verification to your email (' + email + ').',  icon: 'warning', showCancelButton: true, confirmButtonText: 'Send verify to email', denyButtonText: `Back`, })
-      .then((result) => {
-        if (result.isConfirmed) {
-          Swal.fire('not done!', 'not done', 'error')
-        }
-      })
-    // console.log('email not verify :', email)
+  const emailNotVerify = (obj) => {
+    Swal.fire({ title: 'Verification needed!', text: 'Click "verify" button to send verification to your email (' + obj.email + ').',  icon: 'warning', showCancelButton: true, confirmButtonText: 'Send verify to email', denyButtonText: `Back`, })
+      .then((result) => { if (result.isConfirmed) { sendNewVerify(obj.verify_hash) } })
   }
+  const expiredPassword = (user) => {
+    Swal.fire({ title: 'Password expired!', text: 'You haven\'t change your password since (' + user.time_password.toDate().toString() +
+      '), Click "Sent" button to send reset password link to your email (' + user.email + ').',  icon: 'warning', showCancelButton: true, confirmButtonText: 'Send link to email', denyButtonText: `Back`, })
+      .then( async (result) => { if (result.isConfirmed) {
+        userModel.sendResetPw(user.email, sendResetPwSuccess, sendResetPwUnsuccess)
+        Swal.fire({ title: 'Send link success', text:"We have sent reset password link to your email (" + (user.email) + ').', icon: 'success', confirmButtonText: 'Back' })
+      }})
+  }
+
+  const sendResetPwSuccess = async (user) => {
+    await sendResetVerify(user)
+    Swal.fire({ title: 'Send link success', text:"We have sent reset password link to your email (" + (user.email) + ').', icon: 'success', confirmButtonText: 'Back' })
+  }
+  const sendResetPwUnsuccess = (msg) => {
+    Swal.fire({ title: 'Send link failed', text: msg, icon: 'error', confirmButtonText: 'Back' })
+  }
+
+  // Email function
+  const sendResetVerify = (user) => {
+    var templateParams = {
+      target_email: user.email,
+      username: user.username,
+      verify_link: window.location.origin.toString() + '/reset?key=' + user.reset_hash
+    };
+    emailjs.send(
+      process.env.REACT_APP_EMAILJS_SERVICEID, 
+      process.env.REACT_APP_EMAILJS_TEMPLATEID_RESET, 
+      templateParams, 
+      process.env.REACT_APP_EMAILJS_PUBLICKEY
+    )
+      .then((result) => {
+        console.log(result.text);
+      }, (error) => {
+        console.log(error.text);
+      });
+  };
+
+  const sendNewVerify = (oldHash) => {
+    userModel.sendVerify(oldHash, sendVerifySuccess, sendVerifyUnsuccess)
+  }
+  const sendVerifySuccess = async (user) => {
+    await sendEmailVerify(user)
+    Swal.fire({ title: 'Send verify success', text:"We have sent verify link to your email (" + (user.email) + ').', icon: 'success', confirmButtonText: 'Back' })
+  }
+  const sendVerifyUnsuccess = (msg) => {
+    Swal.fire({ title: 'Send verify failed', text: msg, icon: 'error', confirmButtonText: 'Back' })
+  }
+  
+  // Email function
+  const sendEmailVerify = (user) => {
+    var templateParams = {
+      target_email: user.email,
+      username: user.username,
+      verify_link: window.location.origin.toString() + '/verify?key=' + user.verify_hash
+    };
+    emailjs.send(
+      process.env.REACT_APP_EMAILJS_SERVICEID, 
+      process.env.REACT_APP_EMAILJS_TEMPLATEID_VERIFY, 
+      templateParams, 
+      process.env.REACT_APP_EMAILJS_PUBLICKEY
+    )
+      .then((result) => {
+        console.log(result.text);
+      }, (error) => {
+        console.log(error.text);
+      });
+  };
 
   return (
     <div className="relative flex flex-col justify-center min-h-screen overflow-hidden bg-purple-900">
@@ -115,20 +178,29 @@ function Login() {
               Password
             </label>
             <input
-              type="password"
+              type={ showPassword ? "text" : "password" }
               className="block w-full px-4 py-2 mt-2 text-purple-700 bg-white border rounded-md focus:border-purple-400 focus:ring-purple-300 focus:outline-none focus:ring focus:ring-opacity-40"
               onChange={(e) => setLoginForm({ ...loginForm, password: e.target.value })}
               required
             />
             <label className="text-sm text-red-800">{Validator.hasBadLength(loginForm.password)}</label>
           </div>
-          <p className="mt-4 text-xs text-purple-600 hover:underline" >
+          <div className="mt-4">
+            <input
+              id="checkboxShowPassword"
+              type="checkbox"
+              onChange={() => setShowPassword(!showPassword)}
+            />
+            <label htmlFor="checkboxShowPassword">
+              {" "}Show password
+            </label>
+          </div>
+          <p className="mt-4 text-sm text-purple-600 hover:underline" >
             <Link to="/Recovery">
               <b>Forget Password?</b>
             </Link>
           </p>
-          
-          <div className="mt-6">
+          <div className="mt-4">
             <ReCAPTCHA
               className="my-3"
               sitekey={process.env.REACT_APP_RECAPTCHA_KEY}

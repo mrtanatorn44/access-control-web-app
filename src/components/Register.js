@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react'
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 
 import emailjs from '@emailjs/browser';
 import bcrypt from 'bcryptjs'
@@ -12,8 +12,8 @@ import * as Validator from '../helpers/Validator'
 function Register() {
   const navigate = useNavigate();
   const captchaRef = useRef(null)
-
   const [ captcha, setCaptcha ] = useState(true)
+
   const [showPassword, setShowPassword ] = useState(false)
   const [registerForm,setRegisterForm] = useState({
     username:'',
@@ -21,7 +21,6 @@ function Register() {
     password: '',
     confirm_password: '',
   })
-
 
   function SubmitRegister(event) {
     event.preventDefault();
@@ -44,10 +43,11 @@ function Register() {
         email         : registerForm.email,
         hash_password : hash_pw,
         salt_password : salt_pw,
+        time_password : new Date(new Date().getTime() + (90 * 24 * 60 * 60 * 1000)), // add 90 day since now
         email_verify  : false,
         verify        : false,
         verify_hash   : Math.random().toString(36).substring(2),
-        verify_time   : new Date()
+        verify_time   : new Date(new Date().getTime() + (30*60000)) // add 30 minutes since create acc
       }
       // console.log(user_form)
       userModel.addUser(user_form, registerSuccess, registerFailed)
@@ -56,11 +56,10 @@ function Register() {
     }
   }
 
-  const registerSuccess = (idUser) => {
-    console.log(idUser);
-    Swal.fire({ title: 'Register Success', text: 'Please verify your email ' + registerForm.email, icon: 'success', confirmButtonText: 'Sign up' })
+  const registerSuccess = (user) => {
+    Swal.fire({ title: 'Register Success', text: 'Please verify your email ' + user.email, icon: 'success', confirmButtonText: 'Sign up' })
     .then(async ()=>{
-      await sendEmailVerify()
+      await sendEmailVerify(user)
       navigate("/")
     })
   }
@@ -69,16 +68,16 @@ function Register() {
     Swal.fire({ title: 'Register Failed', text: msg, icon: 'error', confirmButtonText: 'Cool' })
   }
 
-  const sendEmailVerify = () => {
+  const sendEmailVerify = (user) => {
     var templateParams = {
-      target_email: registerForm.email,
-      username: registerForm.username,
-      verify_link: 'https://localhost:3000/verify=' + registerForm.verify_hash
+      target_email: user.email,
+      username: user.username,
+      verify_link: window.location.origin.toString() + '/verify?key=' + user.verify_hash
     };
 
     emailjs.send(
       process.env.REACT_APP_EMAILJS_SERVICEID, 
-      process.env.REACT_APP_EMAILJS_TEMPLATEID, 
+      process.env.REACT_APP_EMAILJS_TEMPLATEID_VERIFY, 
       templateParams, 
       process.env.REACT_APP_EMAILJS_PUBLICKEY
     )

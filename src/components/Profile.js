@@ -10,13 +10,14 @@ function Profile() {
   const [ userData, setUserData ] = useState({ username : '', email : '' })
 
   useEffect(() => {
-    if (cookies.WEB == undefined) {
+    if (cookies.WEB === undefined) {
       navigate('/')
     } else {
       try {
         var encrypt_userData = cookies.WEB
         var bytes  = CryptoJS.AES.decrypt(encrypt_userData, process.env.REACT_APP_PASSPHRASE);
         var decrypt_userData = bytes.toString(CryptoJS.enc.Utf8);
+        console.log(cookies.WEB);
         setUserData(JSON.parse(decrypt_userData))
       } catch (error) {
         // console.log(error)
