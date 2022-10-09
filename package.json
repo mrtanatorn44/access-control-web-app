@@ -3,13 +3,24 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
+    "@emailjs/browser": "^3.7.0",
+    "@firebase/app": "^0.8.0",
+    "@firebase/firestore": "^3.6.0",
     "@testing-library/jest-dom": "^5.16.5",
     "@testing-library/react": "^13.4.0",
     "@testing-library/user-event": "^13.5.0",
+    "bcryptjs": "^2.4.3",
+    "crypto-js": "^4.1.1",
+    "dotenv": "^16.0.3",
+    "emailjs": "^4.0.1",
+    "firebase": "^9.11.0",
     "react": "^18.2.0",
+    "react-cookie": "^4.1.1",
     "react-dom": "^18.2.0",
-    "react-scripts": "5.0.1",
-    "web-vitals": "^2.1.4"
+    "react-google-recaptcha": "^2.1.0",
+    "react-google-recaptcha-v3": "^1.10.0",
+    "react-scripts": "5.0.0",
+    "sweetalert2": "^11.4.38"
   },
   "scripts": {
     "start": "react-scripts start",
@@ -34,5 +45,11 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
+  },
+  "devDependencies": {
+    "autoprefixer": "^10.4.12",
+    "postcss": "^8.4.17",
+    "react-router-dom": "^6.4.2",
+    "tailwindcss": "^3.1.8"
   }
 }
