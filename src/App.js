@@ -5,7 +5,7 @@ import Recovery from "./components/Recovery";
 import Register from './components/Register';
 import Profile from "./components/Profile";
 import Verify from "./components/Verify";
-import ResetPassword from "./components/ResetPassword";
+import Reset from "./components/Reset";
 
 export default function App() {
   return (
@@ -17,7 +17,7 @@ export default function App() {
         <Route path="/recovery" element={<Recovery />} />
         <Route path="/register" element={<Register />} />
         <Route path="/verify" element={<Verify />} />
-        <Route path="/resetPassword" element={<ResetPassword />} />
+        <Route path="/reset" element={<Reset />} />
       </Routes>
     </BrowserRouter>
   );
