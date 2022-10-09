@@ -51,7 +51,7 @@ function Login() {
     if (isInvalidForm) {
       Swal.fire({ title: 'Login failed!', text: isInvalidForm, icon: 'error', confirmButtonText: 'Cool' })
     } else {
-      userModel.Login(loginForm, loginSuccess, loginFailed, emailNotVerify);
+      userModel.Login(loginForm, loginSuccess, loginFailed, emailNotVerify, expiredPassword);
     } 
   }
   
@@ -77,7 +77,17 @@ function Login() {
     Swal.fire({ title: 'Verification needed!', text: 'Click "verify" button to send verification to your email (' + obj.email + ').',  icon: 'warning', showCancelButton: true, confirmButtonText: 'Send verify to email', denyButtonText: `Back`, })
       .then((result) => { if (result.isConfirmed) { sendNewVerify(obj.verify_hash) } })
   }
-  const expiredPassword = (user) => {
+  const sendNewVerify = (oldHash) => {
+    userModel.sendVerify(oldHash, sendVerifySuccess, sendVerifyUnsuccess)
+  }
+  const sendVerifySuccess = async (user) => {
+    await sendEmailVerify(user)
+    Swal.fire({ title: 'Send verify success', text:"We have sent verify link to your email (" + (user.email) + ').', icon: 'success', confirmButtonText: 'Back' })
+  }
+  const sendVerifyUnsuccess = (msg) => {
+    Swal.fire({ title: 'Send verify failed', text: msg, icon: 'error', confirmButtonText: 'Back' })
+  }
+  const expiredPassword = (user) => { 
     Swal.fire({ title: 'Password expired!', text: 'You haven\'t change your password since (' + user.time_password.toDate().toString() +
       '), Click "Sent" button to send reset password link to your email (' + user.email + ').',  icon: 'warning', showCancelButton: true, confirmButtonText: 'Send link to email', denyButtonText: `Back`, })
       .then( async (result) => { if (result.isConfirmed) {
@@ -85,7 +95,6 @@ function Login() {
         Swal.fire({ title: 'Send link success', text:"We have sent reset password link to your email (" + (user.email) + ').', icon: 'success', confirmButtonText: 'Back' })
       }})
   }
-
   const sendResetPwSuccess = async (user) => {
     await sendResetVerify(user)
     Swal.fire({ title: 'Send link success', text:"We have sent reset password link to your email (" + (user.email) + ').', icon: 'success', confirmButtonText: 'Back' })
@@ -93,8 +102,44 @@ function Login() {
   const sendResetPwUnsuccess = (msg) => {
     Swal.fire({ title: 'Send link failed', text: msg, icon: 'error', confirmButtonText: 'Back' })
   }
-
-  // Email function
+  // const emailNotFound = (user) => {
+  //   Swal.fire({
+  //     title : "Email not found!",
+  //     text  : "Please put new email",
+  //     icon  : 'warning',
+  //     input : 'text',
+  //     showCancelButton: true        
+  //   }).then((result) => {
+  //     var isInvalidForm = false
+  //     if (Validator.invalidEmail(result.value))
+  //       isInvalidForm = Validator.invalidEmail(result.value) 
+      
+  //     if (!isInvalidForm) {
+  //       Swal.fire({
+  //         title : "Add email success!",
+  //         text  : "we have receive your email (" + result.value + ").",
+  //         icon  : 'success',
+  //         showCancelButton: true        
+  //       }).then(() => {
+  //         // update email
+  //         userModel.updateEmailByUsername(user)
+  //       })
+  //     } else {
+  //       Swal.fire({
+  //         title : "Invalid email!",
+  //         text  : isInvalidForm,
+  //         icon  : 'error',
+  //         showCancelButton: true, 
+  //         confirmButtonText: 'try again', 
+  //         denyButtonText: `Back`, 
+  //       }).then( async (result) => { 
+  //         if (result.isConfirmed) {
+  //           emailNotFound(user)
+  //       }})
+  //     }
+  //   });
+  // }
+  // Send Email function
   const sendResetVerify = (user) => {
     var templateParams = {
       target_email: user.email,
@@ -113,19 +158,8 @@ function Login() {
         console.log(error.text);
       });
   };
-
-  const sendNewVerify = (oldHash) => {
-    userModel.sendVerify(oldHash, sendVerifySuccess, sendVerifyUnsuccess)
-  }
-  const sendVerifySuccess = async (user) => {
-    await sendEmailVerify(user)
-    Swal.fire({ title: 'Send verify success', text:"We have sent verify link to your email (" + (user.email) + ').', icon: 'success', confirmButtonText: 'Back' })
-  }
-  const sendVerifyUnsuccess = (msg) => {
-    Swal.fire({ title: 'Send verify failed', text: msg, icon: 'error', confirmButtonText: 'Back' })
-  }
   
-  // Email function
+  // Send Email function
   const sendEmailVerify = (user) => {
     var templateParams = {
       target_email: user.email,
