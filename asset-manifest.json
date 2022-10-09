@@ -1,0 +1,11 @@
+{
+  "files": {
+    "main.css": "/access-control-web-app/static/css/main.cc164def.css",
+    "main.js": "/access-control-web-app/static/js/main.6a0cf826.js",
+    "index.html": "/access-control-web-app/index.html"
+  },
+  "entrypoints": [
+    "static/css/main.cc164def.css",
+    "static/js/main.6a0cf826.js"
+  ]
+}
