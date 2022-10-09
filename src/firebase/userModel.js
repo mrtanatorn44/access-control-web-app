@@ -1,5 +1,4 @@
-import { collection, addDoc ,getFirestore, getDocs, updateDoc, doc, query, where } from "firebase/firestore"; 
-import { getDatabase, ref, set } from "firebase/database";
+import { collection, addDoc ,getFirestore, getDocs, updateDoc, doc, query, where, deleteDoc  } from "firebase/firestore"; 
 import app from "./Connect";
 import bcrypt from 'bcryptjs'
 const db = getFirestore(app);
@@ -11,12 +10,12 @@ export async function addUser(dataUser, success ,unsuccess){
     var isUsernameOrEmailChoosen = false
     userSnapshot.forEach((user) => {
       if (!isUsernameOrEmailChoosen) {
-        if (user.data().email == dataUser.email && user.data().email_verify) {
+        if (user.data().email === dataUser.email && user.data().email_verify) {
           console.log('Email choosen')
           isUsernameOrEmailChoosen = true
           return unsuccess('Your email was choosen by other.')
         }
-        if (user.data().username == dataUser.username) {
+        if (user.data().username === dataUser.username) {
           console.log('Username choosen')
           isUsernameOrEmailChoosen = true
           return unsuccess('Your username was choosen by other.')
@@ -50,7 +49,7 @@ export async function addUser(dataUser, success ,unsuccess){
   }
 }
 
-export async function Login(loginForm, loginSuccess, loginFailed, emailNotVerify, expiredPassword){
+export async function Login(loginForm, loginSuccess, loginFailed, emailNotVerify, expiredPassword, emailNotFound){
   try {
     const userRef = collection(db, "Users");
     const userQuery = query(userRef, where("username", "==", loginForm.username));
@@ -61,17 +60,19 @@ export async function Login(loginForm, loginSuccess, loginFailed, emailNotVerify
     userSnapshot.forEach((user) => {
       user = user.data()
       // Check username
-      if (user.username == loginForm.username) { 
+      if (user.username === loginForm.username) { 
         // Get loginForm password and hash
         var salt_pw = user.salt_password
         var hash_pw = bcrypt.hashSync(loginForm.password, salt_pw);
         // Check password with hash
-        if (user.hash_password == hash_pw) {
+        if (user.hash_password === hash_pw) {
           if (user.email_verify) {
             // Check password expire
             if (user.time_password.toDate().getTime() < new Date().getTime()) {
               return expiredPassword(user)
-            } else {
+            } 
+            // No exception
+            else {
               return loginSuccess(user)
             }
           } else {
@@ -102,6 +103,7 @@ export async function sendResetPw(email, sendResetPwSuccess, sendResetPwUnsucces
         if (user.email === email) { 
           const targetUserRef = doc(db, "Users", user_ID);
           const new_reset_hash = Math.random().toString(36).substring(2)
+          console.log(targetUserRef);
           updateDoc(targetUserRef, ({ 
             reset_hash   : new_reset_hash,
             reset_time   : new Date(new Date().getTime() + 30*60000) // add 30 minutes since create acc
@@ -128,7 +130,7 @@ export async function verifyResetPw(reset_hash, verifySuccess, verifyUnsuccess) 
         const user_ID = user.id
         user = user.data()
         // Check hash verify
-        if (user.reset_hash == reset_hash) { 
+        if (user.reset_hash === reset_hash) { 
           if (user.reset_time.toDate().getTime() < new Date().getTime()) {
             return verifyUnsuccess("Reset link expired.")
           } else {
@@ -143,9 +145,8 @@ export async function verifyResetPw(reset_hash, verifySuccess, verifyUnsuccess) 
   }
 }
 
-export async function updatePassword(userData, updateSuccess, updateUnsuccess) {
+export async function updatePassword(userData,password, updateSuccess, updateUnsuccess) {
   try {
-    const getDB = getDatabase();
     const q = query(collection(db, "Users"), where("username", "==", userData.username));
     const querySnapshot = await getDocs(q);
     if(querySnapshot.empty){
@@ -155,17 +156,26 @@ export async function updatePassword(userData, updateSuccess, updateUnsuccess) {
       querySnapshot.forEach((user) => {
         const user_ID = user.id
         user = user.data()
-
+        ///
+        var salt_pw = user.salt_password
+        var hash_pw = bcrypt.hashSync(password, salt_pw);
+        console.log(user.hash_password);
+        console.log(hash_pw);
         const targetUserRef = doc(db, "Users", user_ID);
-        updateDoc(targetUserRef, ({ 
-          hash_password : userData.hash_password,
-          salt_password : userData.salt_password,
-          time_password : new Date(new Date().getTime() + (90 * 24 * 60 * 60 * 1000)), // add 90 day since now
-          reset_hash    : '',
-          reset_time    : ''
-        }))
+        if(user.hash_password !== hash_pw){
+          updateDoc(targetUserRef, ({ 
+            hash_password : userData.hash_password,
+            salt_password : userData.salt_password,
+            time_password : new Date(new Date().getTime() + (90 * 24 * 60 * 60 * 1000)), // add 90 day since now
+            reset_hash    : '',
+            reset_time    : ''
+          }))
+            
+          return updateSuccess()
+        }else{
+          return updateUnsuccess()
           
-        return updateSuccess()
+        }
       });
     }
   } catch (error) {
@@ -186,14 +196,15 @@ export async function verifyEmail(hash, verifySuccess, verifyUnsuccess, verifyAl
         const user_ID = user.id
         user = user.data()
         // Check hash verify
-        if (user.verify_hash == hash) { 
+        if (user.verify_hash === hash) { 
           if (user.email_verify) {
             return verifyAlready(user.email)
           } else if (user.verify_time.toDate().getTime() < new Date().getTime()) {
             return verifyExpired({ email: user.email, hash: hash})
           } else {
-            const targetUserRef = doc(db, "Users", user_ID);
+            const  targetUserRef = doc(db, "Users", user_ID);
             updateDoc(targetUserRef, ({ email_verify: true }))
+            deleteTargetEmail(user.email)
             return verifySuccess(user.email)
           }
         }
@@ -204,6 +215,61 @@ export async function verifyEmail(hash, verifySuccess, verifyUnsuccess, verifyAl
     return verifyUnsuccess('error')
   }
 }
+
+export async function deleteTargetEmail(email) {
+  try {
+    const userRef = collection(db, "Users");
+    const userQuery = query(userRef, where("email", "==", email));
+    const userSnapshot = await getDocs(userQuery);
+    if (userSnapshot.empty){
+      // return verifyUnsuccess('Verify key was not found.')
+    } else {
+      userSnapshot.forEach((user) => {
+        const user_ID = user.id
+        user = user.data()
+        // Check hash verify
+        if (user.email === email && !user.email_verify) { 
+          const  targetUserRef = doc(db, "Users", user_ID);
+          deleteDoc(targetUserRef)
+            .then(() => {
+              console.log("User with email " + email + ' has delete docs')
+            })
+            .catch(error => {
+              console.log(error);
+            })
+          // return verifySuccess(user.email)
+        }
+      });
+    }
+  } catch (error) {
+    console.error("verifyEmail : ", error);
+    // return verifyUnsuccess('error')
+  }
+}
+
+// export async function updateEmailByUsername(dataUser, success) {
+//   try {
+//     const userRef = collection(db, "Users");
+//     const userQuery = query(userRef, where("username", "==", dataUser.username));
+//     const userSnapshot = await getDocs(userQuery);
+//     if (userSnapshot.empty){
+//       // return repeatUnsuccess('Update email error.')
+//     } else {
+//       userSnapshot.forEach((user) => {
+//         const user_ID = user.id
+//         user = user.data()
+//         // Check hash verify
+//           const targetUserRef = doc(db, "Users", user_ID);
+//           updateDoc(targetUserRef, { email: dataUser.email })
+//           return success()
+//       });
+//     }
+//   } catch (error) {
+//     console.error("updateEmailByUsername : ", error);
+//     // return verifyUnsuccess('error')
+//   }
+// }
+
 export async function sendVerify(hash, repeatSuccess, repeatUnsuccess) {
   try {
     const userRef = collection(db, "Users");
@@ -216,7 +282,7 @@ export async function sendVerify(hash, repeatSuccess, repeatUnsuccess) {
         const user_ID = user.id
         user = user.data()
         // Check hash verify
-        if (user.verify_hash == hash) { 
+        if (user.verify_hash === hash) { 
           const targetUserRef = doc(db, "Users", user_ID);
           const new_verify_hash = Math.random().toString(36).substring(2)
           updateDoc(targetUserRef, ({ 
