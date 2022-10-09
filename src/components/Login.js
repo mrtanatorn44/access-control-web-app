@@ -18,6 +18,22 @@ function Login() {
   const [ captcha, setCaptcha ] = useState(true)
   const [ cookies, setCookies, removeCookies ] = useCookies(['WEB']);
 
+  useEffect(() => {
+    if (cookies.WEB != undefined) {
+      try {
+        var encrypt_userData = cookies.WEB
+        var bytes  = CryptoJS.AES.decrypt(encrypt_userData, process.env.REACT_APP_PASSPHRASE);
+        var decrypt_userData = bytes.toString(CryptoJS.enc.Utf8);
+        var userData = (JSON.parse(decrypt_userData))
+        navigate('/profile')
+      } catch (error) {
+        console.log(error)
+        removeCookies('WEB')
+        navigate('/')
+      }
+    }
+  }, [])
+
   function onLoginSubmit(event) {
     event.preventDefault();
     const token = captchaRef.current.getValue();
@@ -49,7 +65,7 @@ function Login() {
     setCookies('WEB', encrypt_userData, 1800);
     Swal.fire({ title: 'Login success!', text: 'Success', icon: 'success', confirmButtonText: 'Go to profile' })
       .then(() => {
-        navigate('profile')
+        navigate('/profile')
       });
   }
   const loginFailed = (msg) => {

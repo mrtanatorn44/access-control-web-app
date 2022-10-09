@@ -19,7 +19,7 @@ function Profile() {
         var decrypt_userData = bytes.toString(CryptoJS.enc.Utf8);
         setUserData(JSON.parse(decrypt_userData))
       } catch (error) {
-        console.log(error)
+        // console.log(error)
         setUserData({ username : '', email : '' })
         removeCookies('WEB')
         navigate('/')
