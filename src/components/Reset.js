@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react'
 import { useNavigate, useSearchParams } from "react-router-dom";
 
 import Swal from 'sweetalert2'
-import bcrypt from 'bcryptjs'
+import bcrypt, { hash } from 'bcryptjs'
 import ReCAPTCHA from 'react-google-recaptcha'
 
 import * as userModel from "../firebase/userModel"
@@ -52,13 +52,15 @@ function Reset(event) {
     if (!isInvalidForm) {
       console.log(passwordForm)
       var user = userData
+      // hash new password
       var salt_pw = bcrypt.genSaltSync(10)
       var hash_pw = bcrypt.hashSync(passwordForm.password, salt_pw)
       console.log(' ', salt_pw, '\n', hash_pw)
+      // define new password
       user.salt_password = salt_pw
       user.hash_password = hash_pw
       console.log("Password hash", user);
-      userModel.updatePassword(user, updateSuccess, updateUnsuccess)
+      userModel.updatePassword(user,passwordForm.password, updateSuccess, updateUnsuccess)
     } else {
       Swal.fire({ title: 'Register', text: isInvalidForm, icon: 'error', confirmButtonText: 'ok' })
     }
@@ -70,7 +72,7 @@ function Reset(event) {
       })
   }
   const updateUnsuccess = (msg) => {
-    Swal.fire({ title: 'Reset Password Failed', text: msg, icon: 'success', confirmButtonText: 'Back to login' })
+    Swal.fire({ title: 'Reset Password Failed', text: msg, icon: 'error', confirmButtonText: 'Back to login' })
   }
 
   return (
