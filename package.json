@@ -1,6 +1,7 @@
 {
   "name": "access-control-app",
   "version": "0.1.0",
+  "homepage": "https://mrtanatorn44.github.io/access-control-web-app",
   "private": true,
   "dependencies": {
     "@emailjs/browser": "^3.7.0",
@@ -23,6 +24,8 @@
     "sweetalert2": "^11.4.38"
   },
   "scripts": {
+    "predeploy": "npm run build",
+    "deploy": "gh-pages -d build",
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
