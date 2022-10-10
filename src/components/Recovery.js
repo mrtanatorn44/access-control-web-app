@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react'
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import Swal from 'sweetalert2'
 import * as userModel from "../firebase/userModel"
 
@@ -7,6 +7,7 @@ import ReCAPTCHA from 'react-google-recaptcha'
 import emailjs from '@emailjs/browser';
 
 function Recovery() {
+  const navigate = useNavigate();
   const captchaRef = useRef(null)
   const [ captcha, setCaptcha ] = useState(true)
   const [ emailRecovery, setEmailRecovery ] = useState("")
@@ -14,16 +15,14 @@ function Recovery() {
   const onSubmitRecovery = (event) => {
     event.preventDefault();
     captchaRef.current.reset();
-
     userModel.sendResetPw(emailRecovery, sendResetPwSuccess, sendResetPwUnsuccess)
   }
-  const sendResetPwSuccess = async (user) => {
-    await sendResetVerify(user)
-    Swal.fire({ title: 'Send link success', text:"We have sent reset password link to your email (" + censorEmail(user.email) + ').', icon: 'success', confirmButtonText: 'Back' })
-  }
-  const sendResetPwUnsuccess = (msg) => {
-    Swal.fire({ title: 'Send link failed', text: msg, icon: 'error', confirmButtonText: 'Back' })
-  }
+    const sendResetPwSuccess = async (user) => {
+      await sendResetVerify(user)
+    }
+    const sendResetPwUnsuccess = (msg) => {
+      Swal.fire({ title: 'Send link failed', text: msg, icon: 'error', confirmButtonText: 'Back' })
+    }
   
   // Email function
   const sendResetVerify = (user) => {
@@ -39,20 +38,14 @@ function Recovery() {
       process.env.REACT_APP_EMAILJS_PUBLICKEY
     )
       .then((result) => {
-        console.log(result.text);
+        Swal.fire({ title: 'Send link success', text:"We have sent reset password link to your email (" + (user.email) + ').', icon: 'success', confirmButtonText: 'Back' })
+          .then(() => { navigate('/') });
+        // console.log(result.text);
       }, (error) => {
-        console.log(error.text);
+        // console.log(error.text);
+        Swal.fire({ title: 'Send link failed', text: 'Error', icon: 'error', confirmButtonText: 'Back' })
       });
   };
-
-  // Helper Function
-  const censorWord = (str) => {
-    return str[0] + "*".repeat(str.length - 2) + str.slice(-3);
-  }
-  const censorEmail = (email) => {
-    var arr = email.split("@");
-    return censorWord(arr[0]) + "@" + censorWord(arr[1]);
-  }
   
   return (
     <div className="relative flex flex-col justify-center min-h-screen overflow-hidden bg-purple-900">

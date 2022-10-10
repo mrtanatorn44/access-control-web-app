@@ -24,52 +24,49 @@ function Reset(event) {
       navigate('/');
     } else {
       var reset_hash = searchParams.get('key').toString()
-      tryVerifyReset(reset_hash)
+      checkResetLink(reset_hash)
     }
   }, [])
 
-  const tryVerifyReset = (reset_hash) => {
-    userModel.verifyResetPw(reset_hash, verifyResetSuccess, verifyResetUnsuccess)
+  const checkResetLink = (reset_hash) => {
+    userModel.verifyResetLink(reset_hash, verifyResetSuccess, verifyResetUnsuccess)
   }
   const verifyResetSuccess = (user) => {
     setUserData(user)
   }
   const verifyResetUnsuccess = (msg) => {
     Swal.fire({ title: 'Reset link failed', text: msg, icon: 'error', confirmButtonText: 'Back' })
-      .then(async ()=>{
-        navigate("/")
-      })
+      .then(async ()=>{ navigate("/") })
   }
   
-  function ResetPassword(event) {
+  function onResetPassword(event) {
     event.preventDefault();
     captchaRef.current.reset();
 
+    // Check password format
     var isInvalidForm = false;
     if (Validator.invalidPassword(passwordForm.password, passwordForm.repassword))
       isInvalidForm = Validator.invalidPassword(passwordForm.password, passwordForm.repassword)
 
     if (!isInvalidForm) {
-      console.log(passwordForm)
+      // console.log(passwordForm)
       var user = userData
       // hash new password
       var salt_pw = bcrypt.genSaltSync(10)
       var hash_pw = bcrypt.hashSync(passwordForm.password, salt_pw)
-      console.log(' ', salt_pw, '\n', hash_pw)
+      // console.log(' ', salt_pw, '\n', hash_pw)
       // define new password
       user.salt_password = salt_pw
       user.hash_password = hash_pw
-      console.log("Password hash", user);
-      userModel.updatePassword(user,passwordForm.password, updateSuccess, updateUnsuccess)
+      // console.log("Password hash", user);
+      userModel.updatePassword(user, updateSuccess, updateUnsuccess)
     } else {
       Swal.fire({ title: 'Register', text: isInvalidForm, icon: 'error', confirmButtonText: 'ok' })
     }
   }
   const updateSuccess = () => {
     Swal.fire({ title: 'Reset Password Successfully', icon: 'success', confirmButtonText: 'Back to login' })
-      .then(async ()=>{
-        navigate("/")
-      })
+      .then(async ()=>{ navigate("/") })
   }
   const updateUnsuccess = (msg) => {
     Swal.fire({ title: 'Reset Password Failed', text: msg, icon: 'error', confirmButtonText: 'Back to login' })
@@ -81,7 +78,7 @@ function Reset(event) {
         <h1 className="text-3xl font-semibold text-center text-purple-700 underline">
         Reset Password
         </h1>
-        <form className="mt-6" onSubmit={(e) => ResetPassword(e)}>
+        <form className="mt-6" onSubmit={(e) => onResetPassword(e)}>
           <div className="mb-2">
             <label htmlFor="Password" className="block text-sm font-semibold text-gray-800">
               New Password
@@ -134,7 +131,7 @@ function Reset(event) {
                 "bg-purple-700 w-full px-4 py-2 tracking-wide text-white transition-colors duration-200 transform  rounded-md hover:bg-purple-600 focus:outline-none focus:bg-purple-600"
               }
               >
-              ResetPassword
+              Reset Password
             </button >
           </div>
         </form>

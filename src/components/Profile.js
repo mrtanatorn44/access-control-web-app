@@ -52,6 +52,7 @@ function Profile() {
   }, [])
 
   const onLogout = () => {
+    userModel.writeLog('INFO', `Username: ${userData.username} has logged-out.`)
     setUserData({ username : '', email : '' })
     removeCookies('WEB')
     navigate('/')

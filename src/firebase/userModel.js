@@ -6,24 +6,24 @@ const db = getFirestore(app);
 export async function addUser(dataUser, success ,unsuccess){
   try {
     const userSnapshot = await getDocs(collection(db, "Users"));
-    console.log('Checking duplicate email...');
+    // console.log('Checking duplicate email...');
     var isUsernameOrEmailChoosen = false
     userSnapshot.forEach((user) => {
       if (!isUsernameOrEmailChoosen) {
         if (user.data().email === dataUser.email && user.data().email_verify) {
-          console.log('Email choosen')
+          // console.log('Email choosen')
           isUsernameOrEmailChoosen = true
           return unsuccess('Your email was choosen by other.')
         }
         if (user.data().username === dataUser.username) {
-          console.log('Username choosen')
+          // console.log('Username choosen')
           isUsernameOrEmailChoosen = true
           return unsuccess('Your username was choosen by other.')
         }
       }
     })
     
-    console.log('Adding user...');
+    // console.log('Adding user...');
     if (!isUsernameOrEmailChoosen) {
       const user_data = {
         email:          dataUser.email,
@@ -37,16 +37,16 @@ export async function addUser(dataUser, success ,unsuccess){
       }
       const docRef =  addDoc(collection(db, "Users"), user_data)
       .then((doc) => {
-        saveLog('INFO', `Username: ${user_data.username} has registered.`)
+        writeLog('INFO', `Username: ${user_data.username} has registered.`)
         return success(user_data)
       })
       .catch((error) => {
-        saveLog('ERROR', `FUNC(addUser) => ${error}`)
+        writeLog('ERROR', `FUNC(addUser) => ${error}`)
         return unsuccess('Error')
       });
     }
   } catch (error) {
-    saveLog('ERROR', `FUNC(addUser) => ${error}`)
+    writeLog('ERROR', `FUNC(addUser) => ${error}`)
     return unsuccess('Error')
   }
 }
@@ -71,26 +71,26 @@ export async function Login(loginForm, loginSuccess, loginFailed, emailNotVerify
           if (user.email_verify) {
             // Check password expire
             if (user.time_password.toDate().getTime() < new Date().getTime()) {
-              saveLog('INFO', `Username: ${user.username} try to login with expired password.`)
+              writeLog('INFO', `Username: ${user.username} try to login with expired password.`)
               return expiredPassword(user)
             } 
             // No exception
             else {
-              saveLog('INFO', `Username: ${user.username} has logged-in.`)
+              writeLog('INFO', `Username: ${user.username} has logged-in.`)
               return loginSuccess(user)
             }
           } else {
-            saveLog('INFO', `Username: ${user.username} try to login with un-verify email.`)
+            writeLog('INFO', `Username: ${user.username} try to login with un-verify email.`)
             return emailNotVerify(user)
           }
         } else {
-          saveLog('INFO', `Username: ${user.username}  try to login with wrong password.`)
+          writeLog('INFO', `Username: ${user.username}  try to login with wrong password.`)
           return loginFailed('wrong password')
         }
       }
     });
   } catch (error) {
-    saveLog('ERROR', `FUNC(Login) => ${error}`)
+    writeLog('ERROR', `FUNC(Login) => ${error}`)
     return loginFailed('Error')
   }
 }
@@ -110,23 +110,23 @@ export async function sendResetPw(email, sendResetPwSuccess, sendResetPwUnsucces
         if (user.email === email) { 
           const targetUserRef = doc(db, "Users", user_ID);
           const new_reset_hash = Math.random().toString(36).substring(2)
-          console.log(targetUserRef);
+          // console.log(targetUserRef);
           updateDoc(targetUserRef, ({ 
             reset_hash   : new_reset_hash,
             reset_time   : new Date(new Date().getTime() + 30*60000) // add 30 minutes since create acc
           }))
-          saveLog('INFO', `Send reset password link to ${user.email} (${user.username}).`)
+          writeLog('SYS', `Username: ${user.username} has been sent reset password link to (${user.email}).`)
           user.reset_hash = new_reset_hash;
           return sendResetPwSuccess(user)
         }
       });
     }
   } catch (error) {
-    saveLog('ERROR', `FUNC(sendResetPw) => ${error}`)
+    writeLog('ERROR', `FUNC(sendResetPw) => ${error}`)
     return sendResetPwUnsuccess('Error')
   }
 }
-export async function verifyResetPw(reset_hash, verifySuccess, verifyUnsuccess) {
+export async function verifyResetLink(reset_hash, verifySuccess, verifyUnsuccess) {
   try {
     const userRef = collection(db, "Users");
     const userQuery = query(userRef, where("reset_hash", "==", reset_hash));
@@ -140,22 +140,22 @@ export async function verifyResetPw(reset_hash, verifySuccess, verifyUnsuccess) 
         // Check hash verify
         if (user.reset_hash === reset_hash) { 
           if (user.reset_time.toDate().getTime() < new Date().getTime()) {
-            saveLog('INFO', `Username: ${user.username} reset link expired.`)
+            writeLog('INFO', `Username: ${user.username} reset link expired.`)
             return verifyUnsuccess("Reset link expired.")
           } else {
-            saveLog('INFO', `Username: ${user.username} reset link granted.`)
+            writeLog('INFO', `Username: ${user.username} reset link granted.`)
             return verifySuccess(user)
           }
         }
       });
     }
   } catch (error) {
-    saveLog('ERROR', `FUNC(verifyResetPw) => ${error}`)
+    writeLog('ERROR', `FUNC(verifyResetLink) => ${error}`)
     return verifyUnsuccess('Error')
   }
 }
 
-export async function updatePassword(userData,password, updateSuccess, updateUnsuccess) {
+export async function updatePassword(userData, updateSuccess, updateUnsuccess) {
   try {
     const q = query(collection(db, "Users"), where("username", "==", userData.username));
     const querySnapshot = await getDocs(q);
@@ -166,29 +166,20 @@ export async function updatePassword(userData,password, updateSuccess, updateUns
       querySnapshot.forEach((user) => {
         const user_ID = user.id
         user = user.data()
-        var salt_pw = user.salt_password
-        var hash_pw = bcrypt.hashSync(password, salt_pw);
-        console.log(user.hash_password);
-        console.log(hash_pw);
         const targetUserRef = doc(db, "Users", user_ID);
-        if(user.hash_password !== hash_pw){
-          updateDoc(targetUserRef, ({ 
-            hash_password : userData.hash_password,
-            salt_password : userData.salt_password,
-            time_password : new Date(new Date().getTime() + (90 * 24 * 60 * 60 * 1000)), // add 90 day since now
-            reset_hash    : '',
-            reset_time    : ''
-          }))
-          saveLog('INFO', `Username:${user.username} has update password.`)
-          return updateSuccess()
-        }else{
-          saveLog('INFO', `Username:${user.username} update password not success, password same as old password.`)
-          return updateUnsuccess()
-        }
+        updateDoc(targetUserRef, ({ 
+          hash_password : userData.hash_password,
+          salt_password : userData.salt_password,
+          time_password : new Date(new Date().getTime() + (90 * 24 * 60 * 60 * 1000)), // add 90 day since now
+          reset_hash    : '',
+          reset_time    : ''
+        }))
+        writeLog('INFO', `Username:${user.username} has update password.`)
+        return updateSuccess()
       });
     }
   } catch (error) {
-    saveLog('ERROR', `FUNC(updatePassword) => ${error}`)
+    writeLog('ERROR', `FUNC(updatePassword) => ${error}`)
     return updateUnsuccess('Error')
   }
 }
@@ -207,10 +198,10 @@ export async function verifyEmail(hash, verifySuccess, verifyUnsuccess, verifyAl
         // Check hash verify
         if (user.verify_hash === hash) { 
           if (user.email_verify) {
-            saveLog('WARNING', `Username:${user.username} has already verify email but link still access.`)
+            writeLog('WARNING', `Username:${user.username} has already verify email but link still access.`)
             return verifyAlready(user.email)
           } else if (user.verify_time.toDate().getTime() < new Date().getTime()) {
-            saveLog('INFO', `Username:${user.username} has expired password.`)
+            writeLog('INFO', `Username:${user.username} has expired password.`)
             return verifyExpired({ email: user.email, hash: hash})
           } else {
             const  targetUserRef = doc(db, "Users", user_ID);
@@ -220,14 +211,14 @@ export async function verifyEmail(hash, verifySuccess, verifyUnsuccess, verifyAl
               verify_time   : deleteField()
             }))
             deleteTargetEmail(user.email)
-            saveLog('INFO', `Username:${user.username} has succes verified email.`)
+            writeLog('INFO', `Username:${user.username} has success verified email.`)
             return verifySuccess(user.email)
           }
         }
       });
     }
   } catch (error) {
-    saveLog('ERROR', `FUNC(verifyEmail) => ${error}`)
+    writeLog('ERROR', `FUNC(verifyEmail) => ${error}`)
     return verifyUnsuccess('error')
   }
 }
@@ -249,18 +240,18 @@ export async function deleteTargetEmail(email) {
           deleteDoc(targetUserRef)
             .then(() => {
               // console.log("User with email " + email + ' has delete docs')
-              saveLog('INFO', `Delete doc in 'Users' by username:${user.username}, email:${email}`)
+              writeLog('SYS', `Username: ${user.username} has been delete cause email (${email}) was verify by other.`)
             })
             .catch(error => {
-              console.log(error);
-              saveLog('ERROR', `FUNC(deleteTargetEmail) => ${error}`)
+              // console.log(error);
+              writeLog('ERROR', `FUNC(deleteTargetEmail) => ${error}`)
             })
           // return verifySuccess(user.email)
         }
       });
     }
   } catch (error) {
-    saveLog('ERROR', `FUNC(deleteTargetEmail) => ${error}`)
+    writeLog('ERROR', `FUNC(deleteTargetEmail) => ${error}`)
     // return verifyUnsuccess('error')
   }
 }
@@ -307,14 +298,14 @@ export async function sendVerify(hash, repeatSuccess, repeatUnsuccess) {
             verify_hash   : new_verify_hash,
             verify_time   : new Date(new Date().getTime() + 30*60000) // add 30 minutes since create acc
           }))
-          saveLog('INFO', `Send verify to username:${user.username}, email${user.email}`)
+          writeLog('INFO', `Send verify to username:${user.username}, email${user.email}`)
           user.verify_hash = new_verify_hash;
           return repeatSuccess(user)
         }
       });
     }
   } catch (error) {
-    saveLog('ERROR', `FUNC(sendVerify) => ${error}`)
+    writeLog ('ERROR', `FUNC(sendVerify) => ${error}`)
     return repeatUnsuccess('Error')
   }
 }
@@ -334,7 +325,7 @@ export async function readLog(success) {
   
   }
 }
-export async function saveLog(type, text) {
+export async function writeLog(type, text) {
   try {
     await addDoc(collection(db, "Logs"), {
       type      : type,
@@ -348,6 +339,6 @@ export async function saveLog(type, text) {
         console.error("error");
       });
   } catch (error) {
-    console.log("add log error");
+    // console.log("add log error");
   }
 }

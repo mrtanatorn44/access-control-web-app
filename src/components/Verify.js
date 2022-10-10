@@ -33,31 +33,30 @@ function Verify() {
   const tryVerify = (verify_hash) => {
     userModel.verifyEmail(verify_hash, verifySuccess, verifyFailed, verifyAlready, verifyExpired)
   }
-  const verifySuccess = (email) => {
-    Swal.fire({ title: 'Verify success', text:"You account has verified (" + censorEmail(email) + ').', icon: 'success', confirmButtonText: 'Back' })
-  }
-  const verifyFailed = (msg) => {
-    Swal.fire({ title: 'Verify failed', text: msg, icon: 'error', confirmButtonText: 'Back' })
-  }
-  const verifyAlready = (email) => {
-    Swal.fire({ title: 'Verify failed', text:"You have already verified (" + censorEmail(email) + ').', icon: 'warning', confirmButtonText: 'Back' })
-  }
-  const verifyExpired = (obj) => {
-    Swal.fire({ title: 'Verify failed', text:"Your verify key has expired (" + censorEmail(obj.email) + ').', icon: 'warning',
-      showCancelButton: true, confirmButtonText: 'Send verify to email', denyButtonText: `Back`, })
-      .then((result) => { if (result.isConfirmed) { sendNewVerify(obj.hash) } })
-  }
-
-  const sendNewVerify = (oldHash) => {
-    userModel.sendVerify(oldHash, sendVerifySuccess, sendVerifyUnsuccess)
-  }
-  const sendVerifySuccess = async (user) => {
-    await sendEmailVerify(user)
-    Swal.fire({ title: 'Send link success', text:"We have sent verify link to your email (" + censorEmail(user.email) + ').', icon: 'success', confirmButtonText: 'Back' })
-  }
-  const sendVerifyUnsuccess = (msg) => {
-    Swal.fire({ title: 'Send link failed', text: msg, icon: 'error', confirmButtonText: 'Back' })
-  }
+    const verifySuccess = (email) => {
+      Swal.fire({ title: 'Verify success', text:"You account has verified (" + (email) + ').', icon: 'success', confirmButtonText: 'Back' })
+    }
+    const verifyFailed = (msg) => {
+      Swal.fire({ title: 'Verify failed', text: msg, icon: 'error', confirmButtonText: 'Back' })
+    }
+    const verifyAlready = (email) => {
+      Swal.fire({ title: 'Verify failed', text:"You have already verified (" + (email) + ').', icon: 'warning', confirmButtonText: 'Back' })
+    }
+    const verifyExpired = (obj) => {
+      Swal.fire({ title: 'Verify failed', text:"Your verify key has expired (" + (obj.email) + ').', icon: 'warning',
+        showCancelButton: true, confirmButtonText: 'Send verify to email', denyButtonText: `Back`, })
+        .then((result) => { if (result.isConfirmed) { sendNewVerify(obj.hash) } })
+    }
+      const sendNewVerify = (oldHash) => {
+        userModel.sendVerify(oldHash, sendVerifySuccess, sendVerifyUnsuccess)
+      }
+        const sendVerifySuccess = async (user) => {
+          await sendEmailVerify(user)
+          Swal.fire({ title: 'Send link success', text:"We have sent verify link to your email (" + (user.email) + ').', icon: 'success', confirmButtonText: 'Back' })
+        }
+        const sendVerifyUnsuccess = (msg) => {
+          Swal.fire({ title: 'Send link failed', text: msg, icon: 'error', confirmButtonText: 'Back' })
+        }
 
   // Email function
   const sendEmailVerify = (user) => {
@@ -73,20 +72,11 @@ function Verify() {
       process.env.REACT_APP_EMAILJS_PUBLICKEY
     )
       .then((result) => {
-        console.log(result.text);
+        // console.log(result.text);
       }, (error) => {
-        console.log(error.text);
+        // console.log(error.text);
       });
   };
-
-  // Helper Function
-  var censorWord = function (str) {
-    return str[0] + "*".repeat(str.length - 2) + str.slice(-3);
-  }
-  const censorEmail = (email) => {
-    var arr = email.split("@");
-    return censorWord(arr[0]) + "@" + censorWord(arr[1]);
-  }
 
   return (
     <div className="relative flex flex-col justify-center min-h-screen overflow-hidden bg-purple-900">
